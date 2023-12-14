@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AutoWrite</title>
+        <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+        <style>
+            :root {
+                --primary-color: darkgreen;
+            }
+            * {
+                font-family: 'Inter', sans-serif;
+                box-sizing: border-box;
+                line-height: 1.5;
+            }
+            a {
+                color: var(--primary-color);
+            }
+            h1 {
+                border-bottom: 1px solid #ccc;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            main {
+                padding: 1em;
+                max-width: 40em;
+                margin: auto;
+            }
+            #recommendation {
+                color: lightgrey;
+            }
+            details {
+                display: block;
+                margin: 1em 0;
+            }
+            summary {
+                margin: 1em 0;
+            }
+            input[type=text] {
+                border: 1px solid lightgray;
+                border-radius: 4px;
+                padding: 0.5em;
+                width: 100%;
+                margin-bottom: 0.5em;
+            }
+            button {
+                background-color: var(--primary-color);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 0.5em;
+                width: 100%;
+                margin: 0.5em 0;
+                cursor: pointer;
+            }
+            #writing {
+                border: 1px solid lightgray;
+                border-radius: 4px;
+                padding: 0.5em;
+                width: 100%;
+                margin-bottom: 0.5em;
+                min-height: 600px;
+            }
+            #writing:focus {
+                outline: none;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>AutoWrite</h1>
+            <div id="writing" contenteditable="true" style="height: 100px; padding: 10px; font-size: 20px; font-family: sans-serif;"></div>
+            <p>Context-aware autocomplete.</p>
+            <details>
+                <summary>Settings</summary>
+                <div id="urls">
+                    <input type="text" class="url" placeholder="URL"><input type="checkbox" class="priority" id="priority1" name="priority1" value="priority1"><label for="priority1">Priority</label><br>
+                </div>
+                <button onclick="addURLBox()">Add URL</button>
+                <label for="rules">Personal dictionary</label>
+                <p style="font-size: 12px;">Add rules in [to replace]-[replace with] structure. Separate rules with a comma.</p>
+                <input type="text" id="rules" class="rules" placeholder="Personal dictionary" value="v5-YOLOv5">
+            </details>
+            <footer>
+                <p>Created by <a href="https://jamesg.blog">capjamesg</a>.</p>
+            </footer>
+        </main>
+    </body>
+    <script>
+        function addURLBox() {
+            var urls = document.getElementById("urls");
+            var new_url = document.createElement("input");
+            new_url.setAttribute("type", "text");
+            new_url.setAttribute("class", "url");
+            new_url.setAttribute("placeholder", "URL");
+            urls.appendChild(new_url);
+            var new_priority = document.createElement("input");
+            new_priority.setAttribute("type", "checkbox");
+            new_priority.setAttribute("class", "priority");
+            new_priority.setAttribute("id", "priority" + (document.getElementsByClassName("priority").length + 1));
+            new_priority.setAttribute("name", "priority" + (document.getElementsByClassName("priority").length + 1));
+            new_priority.setAttribute("value", "priority" + (document.getElementsByClassName("priority").length + 1));
+            urls.appendChild(new_priority);
+        }
+
+        // when user clicks in writing box, make sure cursor is before recommendation
+        document.getElementById("writing").addEventListener("click", function(event) {
+            var recommendation = document.getElementById("recommendation");
+            if (recommendation) {
+                var range = document.createRange();
+                var sel = window.getSelection();
+                range.setStart(document.getElementById("writing"), 1);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        });
+        
+        document.getElementById("writing").addEventListener("keydown", function(event) {
+            // remove br before recommendation
+            var br = document.getElementById("writing").getElementsByTagName("br")[document.getElementById("writing").getElementsByTagName("br").length - 1];
+            if (br) {
+                br.remove();
+            }
+            var urls = document.getElementsByClassName("url");
+            var previous_word = document.getElementById("writing").innerText.split(" ")[document.getElementById("writing").innerText.split(" ").length - 1];
+            var rules = document.getElementById("rules").value;
+            // get value from each url
+            var url_values = [];
+
+            for (var i = 0; i < urls.length; i++) {
+                var url = urls[i];
+                var priority = document.getElementById("priority" + (i + 1));
+                if (priority.checked) {
+                    url_values.push(url.value + "?priority");
+                } else {
+                    url_values.push(url.value);
+                }
+            }
+
+            // if space
+            var recommendation = document.getElementById("recommendation");
+            var text = document.getElementById("writing").innerText;
+
+            if (!recommendation) {
+                document.getElementById("writing").innerHTML += " <span id='recommendation'></span>";
+            }
+
+            if (recommendation.innerText.length > 0) {
+                text = text.substring(0, text.length - recommendation.innerText.length);
+            } else {
+                text = text.substring(0, text.length);
+            }
+
+            // if new char that doesn't start with current word, reset recommendation
+            if (
+                event.keyCode >= 48 && event.keyCode <= 90
+            ) {
+                recommendation.innerText = "";
+                last_char = "";
+            }
+
+            // if backspace, remove last character from recommendation
+            if (
+                event.keyCode === 8
+            ) {
+                recommendation.innerText = "";
+            }
+
+            // if not a character key, reset recommendation, allow tab
+            if (
+                (event.keyCode < 48 || event.keyCode > 90) && event.keyCode != 9 && event.keyCode != 32
+            ) {
+                console.log("not a character key");
+                recommendation.innerText = "";
+            }
+
+            // if tab, accept first word from recommendation
+            if (recommendation.innerText.length > 0 && (event.keyCode === 32 || event.keyCode === 9)) {
+                console.log("accepting recommendation");
+                console.log("text: " + text, recommendation.innerText);
+
+                // if current word is < 3 letters, ignore
+                console.log("query: " + text);
+                if (text.split(" ")[text.split(" ").length - 1].length < 3) {
+                    console.log("ignoring");
+                    recommendation.innerText = "";
+                    return;
+                }
+
+                // if a word is more than 6 letters, ignore, unless user hit tab
+                if (text.split(" ")[text.split(" ").length - 1].length > 5 && event.keyCode != 9) {
+                    console.log("ignoring");
+                    recommendation.innerText = "";
+                    return;
+                }
+
+                recommendation.innerHTML = recommendation.innerText.replace(/\n/g, " ").replace(/\s\s+/g, ' ');
+                var to_accept = recommendation.innerText.split(" ")[0];
+                document.getElementById("writing").innerHTML = text + to_accept;
+                document.getElementById("writing").innerHTML += "<span id='recommendation'>" + recommendation.innerText.substring(to_accept.length + 1, recommendation.innerText.length) + "</span>";
+                recommendation.innerText = " " + recommendation.innerText.substring(to_accept.length, recommendation.innerText.length);
+
+                var range = document.createRange();
+                var sel = window.getSelection();
+                range.setStart(document.getElementById("writing"), 1);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+
+            } else {
+                console.log("no recommendation");
+                var query = text.split(" ")[text.split(" ").length - 1]
+                if (text.split(" ").length > 1) {
+                    var previous_word = text.split(" ")[text.split(" ").length - 2];
+                } else if (text.split(" ").length == 1) {
+                    var previous_word = text.split(" ")[text.split(" ").length - 1];
+                } else {
+                    var previous_word = "";
+                }
+                // add new char to query
+                if (event.keyCode >= 48 && event.keyCode <= 90) {
+                    query += event.key;
+                }
+
+                var all_words = document.getElementById("writing").innerText;
+                fetch("http://localhost:5000/surprisal?query=" + query + "&urls=" + url_values + "&all_words=" + all_words)
+                    .then(response => response.json())
+                    .then(data => {
+                        var previous_word_result = data.previous_word;
+                        // show in lightgrey text,
+                        var recommendation = document.getElementById("recommendation");
+                        var word_length = text.split(" ")[text.split(" ").length - 1].length;
+                        console.log("recommending: " + data.next_word_predictions[0]);
+                        // if (previous_word_result != previous_word) {
+                        //     // replace last word with previoius_word_result
+                        //     console.log("replacing " + previous_word + " with " + previous_word_result);
+                        //     document.getElementById("writing").innerHTML = document.getElementById("writing").innerHTML.replace(previous_word, previous_word_result);
+                        //     // move cursor to end if text area
+                        //     var range = document.createRange();
+                        //     var sel = window.getSelection();
+                        //     range.setStart(document.getElementById("writing"), 1);
+                        //     range.collapse(true);
+                        //     sel.removeAllRanges();
+                        //     sel.addRange(range);
+                        // }
+
+                        // if recommendation < 6 letters, return
+                        if (data.next_word_predictions[0].length < 6 || data.recommend == false) {
+                            recommendation.innerText = "";
+                            return;
+                        }
+
+                        var top_candidate = data.next_word_predictions[0];
+
+                        if (top_candidate && top_candidate != "[OVERWRITE_PREVIOUS_WORD]") {
+                            recommendation.innerText = top_candidate.substring(word_length + 1, top_candidate.length);
+                        }
+                    }).catch(error => {
+                        console.log(error);
+                    });
+                }
+            if (event.keyCode === 9) {
+                event.preventDefault();
+            }
+        });
+    </script>
+</html>
